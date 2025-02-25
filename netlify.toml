@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/r/:shortcode"
+  to = "https://qr-code-maker-1.firebaseapp.com/redirect?shortcode=:shortcode"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

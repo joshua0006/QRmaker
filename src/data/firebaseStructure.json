@@ -1,0 +1,171 @@
+{
+  "users": {
+    "$userId": {
+      "email": "user@example.com",
+      "name": "John Doe",
+      "businessName": "Acme Corp",
+      "mobile": "+1234567890",
+      "createdAt": "timestamp",
+      "lastLoginAt": "timestamp",
+      "settings": {
+        "defaultQRStyle": "simple",
+        "defaultColors": {
+          "dots": "#000000",
+          "background": "#FFFFFF"
+        },
+        "defaultBanner": {
+          "fontFamily": "system-ui",
+          "fontSize": 16,
+          "color": "#000000",
+          "textColor": "#FFFFFF",
+          "width": 80,
+          "bold": false,
+          "italic": false
+        }
+      }
+    }
+  },
+
+  "qrcodes": {
+    "$qrcodeId": {
+      "userId": "user123",
+      "uniqueId": "abc123",
+      "name": "Website QR",
+      "description": "Company website QR code",
+      "category": "marketing",
+      "tags": ["website", "company"],
+      "status": "active",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp",
+      "type": "url",
+      "shortCode": "mywebsite",
+      "currentUrl": "https://example.com",
+      "urlHistory": [
+        {
+          "url": "https://example.com",
+          "setAt": "timestamp",
+          "active": true
+        },
+        {
+          "url": "https://old-example.com",
+          "setAt": "timestamp",
+          "active": false
+        }
+      ],
+      "imageUrl": "storage/path/to/qrcode.png",
+      "logoUrl": "storage/path/to/logo.png",
+      "configuration": {
+        "options": {
+          "width": 550,
+          "height": 550,
+          "margin": 10,
+          "qrOptions": {
+            "errorCorrectionLevel": "Q"
+          },
+          "imageOptions": {
+            "hideBackgroundDots": true,
+            "imageSize": 0.4,
+            "margin": 0
+          },
+          "dotsOptions": {
+            "type": "square",
+            "color": "#000000"
+          },
+          "backgroundOptions": {
+            "color": "#FFFFFF"
+          },
+          "cornersSquareOptions": {
+            "type": "square",
+            "color": "#000000"
+          },
+          "cornersDotOptions": {
+            "type": "square",
+            "color": "#000000"
+          }
+        },
+        "border": {
+          "width": 0,
+          "style": "solid",
+          "color": "#000000",
+          "radius": 0
+        },
+        "banner": {
+          "enabled": false,
+          "position": "none",
+          "text": "",
+          "color": "#000000",
+          "textColor": "#FFFFFF",
+          "width": 80,
+          "fontSize": 16,
+          "fontFamily": "system-ui",
+          "bold": false,
+          "italic": false
+        }
+      }
+    }
+  },
+
+  "shortUrls": {
+    "$shortCode": {
+      "qrcodeId": "qr123",
+      "userId": "user123",
+      "currentUrl": "https://example.com",
+      "createdAt": "timestamp",
+      "updatedAt": "timestamp",
+      "status": "active"
+    }
+  },
+
+  "analytics": {
+    "scans": {
+      "$scanId": {
+        "shortCode": "mywebsite",
+        "qrcodeId": "qr123",
+        "userId": "user123",
+        "timestamp": "timestamp",
+        "url": "https://example.com",
+        "device": {
+          "type": "Mobile",
+          "browser": "Chrome",
+          "os": "iOS"
+        },
+        "location": {
+          "country": "US",
+          "city": "New York",
+          "ip": "xxx.xxx.xxx.xxx"
+        },
+        "referrer": "https://example.com"
+      }
+    },
+    "dailyStats": {
+      "$qrcodeId": {
+        "$date": {
+          "totalScans": 150,
+          "uniqueScans": 120,
+          "devices": {
+            "mobile": 100,
+            "desktop": 50
+          },
+          "browsers": {
+            "chrome": 80,
+            "safari": 70
+          },
+          "countries": {
+            "US": 100,
+            "UK": 50
+          }
+        }
+      }
+    }
+  },
+
+  "categories": {
+    "$categoryId": {
+      "userId": "user123",
+      "name": "Marketing",
+      "description": "Marketing QR codes",
+      "color": "#FF5733",
+      "createdAt": "timestamp"
+    }
+  }
+}

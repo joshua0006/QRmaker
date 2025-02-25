@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // CORS configuration
+    match /{allPaths=**} {
+      allow read: if request.origin == 'https://qrmaker.au';
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isValidContentType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidFileSize() {
+      return request.resource.size <= 5 * 1024 * 1024; // 5MB max
+    }
+
+    // QR code images
+    match /qrcodes/{userId}/{fileName} {
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow create: if isSignedIn() 
+        && isOwner(userId)
+        && isValidContentType()
+        && isValidFileSize();
+      allow update, delete: if isSignedIn() && (isOwner(userId) || isAdmin());
+    }
+
+    // User logos
+    match /logos/{userId}/{fileName} {
+      allow read: if request.origin == 'https://qrmaker.au' || isSignedIn();
+      allow create: if isSignedIn() 
+        && isOwner(userId)
+        && isValidContentType()
+        && isValidFileSize();
+      allow update, delete: if isSignedIn() && (isOwner(userId) || isAdmin());
+    }
+
+    // Profile images
+    match /profiles/{userId}/{fileName} {
+      allow read: if request.origin == 'https://qrmaker.au' || isSignedIn();
+      allow create: if isSignedIn() 
+        && isOwner(userId)
+        && isValidContentType()
+        && isValidFileSize();
+      allow update, delete: if isSignedIn() && (isOwner(userId) || isAdmin());
+    }
+  }
+}
