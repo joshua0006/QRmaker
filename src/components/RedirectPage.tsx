@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { 
@@ -17,9 +17,15 @@ export default function RedirectPage() {
   const { uniqueId } = useParams();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  // Use a ref to track if we've already processed this scan
+  const hasProcessed = useRef(false);
   
   useEffect(() => {
     const handleRedirect = async () => {
+      // Skip if already processed
+      if (hasProcessed.current) return;
+      hasProcessed.current = true;
+      
       try {
         // Find the QR code document with the matching uniqueId
         const qrQuery = query(
@@ -75,6 +81,11 @@ export default function RedirectPage() {
     };
     
     handleRedirect();
+    
+    // Clean up function
+    return () => {
+      hasProcessed.current = true; // Prevent processing on unmount
+    };
   }, [uniqueId]);
   
   if (loading) {

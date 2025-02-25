@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [view, setView] = useState<'list' | 'analytics'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedQRId, setSelectedQRId] = useState<string | null>(null);
 
   // Reload QR codes when category selection changes
   useEffect(() => {
@@ -62,6 +63,13 @@ export default function Dashboard() {
       unsubscribe();
     };
   }, []);
+
+  // Set initial selected QR code when data loads
+  useEffect(() => {
+    if (qrCodes.length > 0 && !selectedQRId) {
+      setSelectedQRId(qrCodes[0].id);
+    }
+  }, [qrCodes, selectedQRId]);
 
   const loadQRCodes = async (userId: string) => {
     console.log('Fetching QR codes for user:', userId);
@@ -148,9 +156,34 @@ export default function Dashboard() {
               <QRCodeList 
                 qrCodes={qrCodes} 
                 onUpdate={() => auth.currentUser && loadQRCodes(auth.currentUser.uid)} 
+                onSelectForAnalytics={(id) => {
+                  setSelectedQRId(id);
+                  setView('analytics');
+                }}
               />
             ) : (
-              <Analytics qrCodes={qrCodes} />
+              qrCodes.length > 0 && selectedQRId ? (
+                <div>
+                  <div className="mb-4 flex items-center">
+                    <select
+                      className="form-select px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      value={selectedQRId}
+                      onChange={(e) => setSelectedQRId(e.target.value)}
+                    >
+                      {qrCodes.map(qr => (
+                        <option key={qr.id} value={qr.id}>
+                          {qr.name || 'Unnamed QR Code'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <Analytics selectedQRId={selectedQRId} />
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No QR codes available for analytics</p>
+                </div>
+              )
             )}
           </div>
         </div>

@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Layout from './components/Layout';
 import RedirectPage from './components/RedirectPage';
 import ShortRedirectPage from './pages/ShortRedirectPage';
+import AnalyticsView from './components/AnalyticsView';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/qr/:uniqueId" element={<RedirectPage />} />
           <Route path="/redirect/:uniqueId" element={<RedirectPage />} />
           <Route path="/r/:shortId" element={<ShortRedirectPage />} />
+          <Route path="/analytics/:uniqueId" element={<AnalyticsView />} />
         </Routes>
       </Layout>
     </Router>

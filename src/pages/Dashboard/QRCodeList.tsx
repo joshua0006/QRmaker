@@ -8,15 +8,17 @@ import { db, storage } from '../../lib/firebase';
 import { deleteDoc, doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { auth } from '../../lib/firebase';
+import { BarChart2 } from 'lucide-react';
 
 interface QRCodeListProps {
   qrCodes: any[];
   onUpdate: () => void;
+  onSelectForAnalytics?: (id: string) => void;
 }
 
 const ITEMS_PER_PAGE = 12;
 
-export default function QRCodeList({ qrCodes, onUpdate }: QRCodeListProps) {
+export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: QRCodeListProps) {
   const [page, setPage] = useState(1);
   const totalPages = Math.ceil(qrCodes.length / ITEMS_PER_PAGE);
   const displayedQRCodes = qrCodes.slice(0, page * ITEMS_PER_PAGE);
@@ -93,7 +95,17 @@ export default function QRCodeList({ qrCodes, onUpdate }: QRCodeListProps) {
             data={qr}
             onDelete={handleDelete}
             onUpdate={onUpdate}
-          />
+          >
+            {onSelectForAnalytics && (
+              <button
+                onClick={() => onSelectForAnalytics(qr.id)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="View Analytics"
+              >
+                <BarChart2 className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+          </NewQRCodeCard>
         ))}
       </div>
       {page < totalPages && (
