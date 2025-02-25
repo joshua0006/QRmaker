@@ -1,14 +1,13 @@
 /**
  * QR code list component for the dashboard
  */
-import React from 'react';
-import NewQRCodeCard from '../../components/Dashboard/NewQRCodeCard';
-import { useState, useEffect } from 'react';
-import { db, storage } from '../../lib/firebase';
-import { deleteDoc, doc, collection, query, where, getDocs } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
+import React, { useEffect, useState } from 'react';
+import { Edit2, Trash2, BarChart2, ExternalLink, RefreshCw } from 'lucide-react';
+import { Card, Spinner } from '@nextui-org/react';
+import { QRCodeSVG as QRCode } from 'qrcode.react';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { auth } from '../../lib/firebase';
-import { BarChart2 } from 'lucide-react';
 
 interface QRCodeListProps {
   qrCodes: any[];
@@ -23,6 +22,9 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
   const totalPages = Math.ceil(qrCodes.length / ITEMS_PER_PAGE);
   const displayedQRCodes = qrCodes.slice(0, page * ITEMS_PER_PAGE);
   const [categories, setCategories] = useState<Record<string, any>>({});
+  const [scanCounts, setScanCounts] = useState<{ [key: string]: number }>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!auth.currentUser) return;
@@ -47,28 +49,56 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
     loadCategories();
   }, []);
 
+  const fetchScanCounts = async () => {
+    setLoading(true);
+    const counts: { [key: string]: number } = {};
+
+    try {
+      for (const code of qrCodes) {
+        if (!code.id) continue;
+        
+        const scansCol = collection(db, 'qrcodes', code.id, 'scans');
+        const snapshot = await getDocs(scansCol);
+        counts[code.id] = snapshot.docs.length;
+      }
+      
+      setScanCounts(counts);
+    } catch (error) {
+      console.error("Error fetching scan counts:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (qrCodes.length > 0) {
+      fetchScanCounts();
+    } else {
+      setLoading(false);
+    }
+  }, [qrCodes]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    onUpdate();
+    fetchScanCounts();
+  };
+
   // Enhance QR codes with category data
   const qrCodesWithCategories = displayedQRCodes.map(qr => ({
     ...qr,
     category: qr.categoryId ? categories[qr.categoryId] : null
   }));
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm('Are you sure you want to delete this QR code?')) return;
-
-    if (!auth.currentUser) {
-      alert('You must be logged in to delete QR codes');
-      return;
-    }
-
-    try {
-      // Delete QR code from Firestore
-      await deleteDoc(doc(db, 'qrcodes', id));
-      
-      onUpdate();
-    } catch (error) {
-      console.error('Error deleting QR code:', error);
-      alert('Failed to delete QR code. Please try again later.');
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this QR code?")) {
+      try {
+        await deleteDoc(doc(db, 'qrcodes', id));
+        onUpdate();
+      } catch (error) {
+        console.error("Error deleting QR code:", error);
+      }
     }
   };
 
@@ -87,37 +117,85 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-        {qrCodesWithCategories.map((qr) => (
-          <NewQRCodeCard
-            key={qr.id}
-            data={qr}
-            onDelete={handleDelete}
-            onUpdate={onUpdate}
-          >
-            {onSelectForAnalytics && (
-              <button
-                onClick={() => onSelectForAnalytics(qr.id)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="View Analytics"
-              >
-                <BarChart2 className="w-5 h-5 text-gray-600" />
-              </button>
-            )}
-          </NewQRCodeCard>
+    <div>
+      <div className="flex justify-end mb-4">
+        <button 
+          onClick={handleRefresh}
+          className="flex items-center gap-2 px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
+          disabled={refreshing}
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {qrCodesWithCategories.map((code) => (
+          <Card key={code.id} className="p-4 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col items-center space-y-4">
+              {/* QR Code Display */}
+              <div className="bg-white p-4 rounded-lg shadow-inner">
+                <QRCode
+                  value={code.redirectUrl || `${window.location.origin}/qr/${code.uniqueId}`}
+                  size={180}
+                  level="H"
+                  includeMargin={true}
+                  className="mx-auto"
+                  renderAs="svg"
+                />
+              </div>
+
+              {/* QR Code Info */}
+              <div className="w-full text-center">
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                  {code.name || 'Unnamed QR Code'}
+                </h3>
+                <div className="text-sm text-gray-600">
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Spinner size="sm" /> Loading scans...
+                    </span>
+                  ) : (
+                    `Scans: ${scanCounts[code.id] || 0}`
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-center space-x-2 w-full pt-2 border-t">
+                <button
+                  onClick={() => onSelectForAnalytics?.(code.id)}
+                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="View Analytics"
+                >
+                  <BarChart2 className="w-5 h-5" />
+                </button>
+                <a
+                  href={code.redirectUrl || `${window.location.origin}/qr/${code.uniqueId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="Open Link"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+                <button
+                  onClick={() => handleDelete(code.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete QR Code"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Created Date */}
+              <div className="text-xs text-gray-400">
+                Created: {code.createdAt?.toDate().toLocaleDateString() || 'Unknown'}
+              </div>
+            </div>
+          </Card>
         ))}
       </div>
-      {page < totalPages && (
-        <div className="text-center">
-          <button
-            onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-          >
-            Load More
-          </button>
-        </div>
-      )}
     </div>
   );
 }

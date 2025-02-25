@@ -1,14 +1,64 @@
 /**
  * User dashboard for managing QR codes
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { auth, db } from '../../lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { QrCode, Edit, Trash2, BarChart2 } from 'lucide-react';
+import { QrCode, Edit, Trash2, BarChart2, ChevronDown } from 'lucide-react';
 import QRCodeList from './QRCodeList';
 import Analytics from './Analytics';
 import Sidebar from '../../components/Dashboard/Sidebar';
 import { Navigate } from 'react-router-dom';
+
+const CustomDropdown = ({ qrCodes, selectedQRId, setSelectedQRId }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSelect = (id) => {
+    setSelectedQRId(id);
+    setIsOpen(false);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full px-4 py-2 text-left bg-white border border-gray-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <span>{qrCodes.find(qr => qr.id === selectedQRId)?.name || 'Select QR Code'}</span>
+        <ChevronDown className="w-5 h-5 text-gray-600" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+          {qrCodes.map(qr => (
+            <button
+              key={qr.id}
+              onClick={() => handleSelect(qr.id)}
+              className="flex items-center justify-between w-full px-4 py-2 text-left hover:bg-indigo-100 focus:outline-none"
+            >
+              <span>{qr.name || 'Unnamed QR Code'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const [qrCodes, setQrCodes] = useState<any[]>([]);
@@ -165,17 +215,11 @@ export default function Dashboard() {
               qrCodes.length > 0 && selectedQRId ? (
                 <div>
                   <div className="mb-4 flex items-center">
-                    <select
-                      className="form-select px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      value={selectedQRId}
-                      onChange={(e) => setSelectedQRId(e.target.value)}
-                    >
-                      {qrCodes.map(qr => (
-                        <option key={qr.id} value={qr.id}>
-                          {qr.name || 'Unnamed QR Code'}
-                        </option>
-                      ))}
-                    </select>
+                    <CustomDropdown 
+                      qrCodes={qrCodes} 
+                      selectedQRId={selectedQRId} 
+                      setSelectedQRId={setSelectedQRId} 
+                    />
                   </div>
                   <Analytics selectedQRId={selectedQRId} />
                 </div>

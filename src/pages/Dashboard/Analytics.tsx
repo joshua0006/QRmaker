@@ -211,24 +211,7 @@ export default function Analytics({ selectedQRId }: AnalyticsProps) {
 
       {/* Device & Referrer Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Smartphone className="w-6 h-6" />
-            Device Types
-          </h2>
-          {Object.keys(devices).length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(devices).map(([device, count]) => (
-                <div key={device} className="flex items-center justify-between">
-                  <span className="text-gray-600">{device}</span>
-                  <span className="font-medium">{count}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500">No device data available</p>
-          )}
-        </Card>
+
 
         <Card className="p-6">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
