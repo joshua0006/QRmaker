@@ -10,11 +10,19 @@ import Analytics from './Analytics';
 import Sidebar from '../../components/Dashboard/Sidebar';
 import { Navigate } from 'react-router-dom';
 
-const CustomDropdown = ({ qrCodes, selectedQRId, setSelectedQRId }) => {
+const CustomDropdown = ({ 
+  qrCodes, 
+  selectedQRId, 
+  setSelectedQRId 
+}: { 
+  qrCodes: any[], 
+  selectedQRId: string, 
+  setSelectedQRId: (id: string) => void 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const handleSelect = (id) => {
+  const handleSelect = (id: string) => {
     setSelectedQRId(id);
     setIsOpen(false);
   };
@@ -67,13 +75,16 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedQRId, setSelectedQRId] = useState<string | null>(null);
+  const [categoriesUpdated, setCategoriesUpdated] = useState(0);
 
   // Reload QR codes when category selection changes
   useEffect(() => {
     if (auth.currentUser) {
+      console.log("Category changed to:", selectedCategory);
+      setLoading(true); // Show loading state while fetching
       loadQRCodes(auth.currentUser.uid);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, categoriesUpdated]);
 
   useEffect(() => {
     let unsubscribed = false;
@@ -128,8 +139,10 @@ export default function Dashboard() {
       orderBy('createdAt', 'desc')
     ];
 
+    // Only add category filter if a specific category is selected
     if (selectedCategory) {
-      constraints.unshift(where('categoryId', '==', selectedCategory));
+      console.log('Filtering by category:', selectedCategory);
+      constraints.unshift(where('category', '==', selectedCategory));
     }
 
     const q = query(
@@ -137,15 +150,27 @@ export default function Dashboard() {
       ...constraints
     );
     
-    const snapshot = await getDocs(q);
-    console.log('Found QR codes:', snapshot.docs.length);
-    const codes = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    setQrCodes(codes);
-    setError(null);
+    try {
+      const snapshot = await getDocs(q);
+      console.log('Found QR codes:', snapshot.docs.length);
+      const codes = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setQrCodes(codes);
+      setError(null);
+    } catch (err) {
+      console.error("Error loading QR codes:", err);
+      setError("Failed to load QR codes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCategoryUpdate = () => {
+    // Trigger a refresh when categories are added/removed
+    setCategoriesUpdated(prev => prev + 1);
   };
 
   // If not authenticated, redirect to home
@@ -160,6 +185,7 @@ export default function Dashboard() {
           <Sidebar
               onCategorySelect={setSelectedCategory}
               selectedCategory={selectedCategory}
+              onCategoryUpdate={handleCategoryUpdate}
             />
 
           <div className="flex-1">
@@ -205,7 +231,10 @@ export default function Dashboard() {
             ) : view === 'list' ? (
               <QRCodeList 
                 qrCodes={qrCodes} 
-                onUpdate={() => auth.currentUser && loadQRCodes(auth.currentUser.uid)} 
+                onUpdate={() => {
+                  console.log("QR code list update requested");
+                  if (auth.currentUser) loadQRCodes(auth.currentUser.uid);
+                }} 
                 onSelectForAnalytics={(id) => {
                   setSelectedQRId(id);
                   setView('analytics');

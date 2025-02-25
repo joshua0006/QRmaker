@@ -131,6 +131,12 @@ export default function CategoryList({ selectedCategory, onCategorySelect }: Cat
     }
   };
 
+  // Function to handle category selection without Firestore operations
+  const handleCategorySelect = (category: string) => {
+    // Just call the parent handler with the category
+    onCategorySelect(category);
+  };
+
   if (loading) {
     return (
       <div className="space-y-2 animate-pulse">
@@ -218,36 +224,38 @@ export default function CategoryList({ selectedCategory, onCategorySelect }: Cat
           }`}
         >
           <button
-            onClick={() => onCategorySelect(category.id)}
-            className="flex items-center gap-2 flex-grow text-left"
+            onClick={() => handleCategorySelect(category.id)}
+            className={`w-full text-left p-2 rounded ${
+              selectedCategory === category.id
+                ? 'bg-indigo-100 text-indigo-600'
+                : 'hover:bg-gray-100'
+            }`}
           >
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: category.color }}
-            />
-            <span>{category.name}</span>
+            {category.name}
           </button>
           
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // Handle edit
-              }}
-              className="p-1 text-gray-400 hover:text-gray-600"
-            >
-              <Edit2 size={14} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete(category.id);
-              }}
-              className="p-1 text-gray-400 hover:text-red-600"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
+          {category.id !== 'all' && (
+            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Handle edit
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <Edit2 size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(category.id);
+                }}
+                className="p-1 text-gray-400 hover:text-red-600"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
