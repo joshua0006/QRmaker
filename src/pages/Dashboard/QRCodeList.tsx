@@ -1,12 +1,9 @@
-/**
- * QR code list component for the dashboard
- */
 import React, { useEffect, useState } from 'react';
-import { Edit2, Trash2, BarChart2, ExternalLink, RefreshCw } from 'lucide-react';
+import { Trash2, BarChart2, ExternalLink, RefreshCw, Download } from 'lucide-react';
 import { Card, Spinner } from '@nextui-org/react';
-import { QRCodeSVG as QRCode } from 'qrcode.react';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import QRCodeStyling from 'qr-code-styling';
 import { auth } from '../../lib/firebase';
 
 interface QRCodeListProps {
@@ -15,107 +12,143 @@ interface QRCodeListProps {
   onSelectForAnalytics?: (id: string) => void;
 }
 
-const ITEMS_PER_PAGE = 12;
+// Separate component for QR code rendering
+function QRCodeDisplay({ code }: { code: any }) {
+  const [qrElement, setQrElement] = useState<HTMLDivElement | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  
+  useEffect(() => {
+    const container = document.createElement('div');
+    setQrElement(container);
+    
+    let isMounted = true;
+    let qrInstance = null;
+    
+    async function generateQR() {
+      try {
+        setLoading(true);
+        setError(false);
+        
+        const qrDoc = await getDoc(doc(db, 'qrcodes', code.id));
+        if (!qrDoc.exists() || !isMounted) return;
+        
+        const qrData = qrDoc.data();
+        const redirectUrl = `${window.location.origin}/qr/${qrData.uniqueId}`;
+        
+        // Adjusted QR code size to fit card
+        qrInstance = new QRCodeStyling({
+          
+          type: 'svg',
+          ...qrData.options,
+          data: redirectUrl,
+          image: qrData.logoUrl || undefined,
+          dotsOptions: {
+            type: 'rounded',
+            color: '#000000',
+            ...(qrData.options?.dotsOptions || {})
+          },
+          backgroundOptions: {
+            color: '#FFFFFF',
+            ...(qrData.options?.backgroundOptions || {})
+          },
+          cornersSquareOptions: {
+            type: 'square',
+            color: '#000000',
+            ...(qrData.options?.cornersSquareOptions || {})
+          },
+          cornersDotOptions: {
+            type: 'square',
+            color: '#000000',
+            ...(qrData.options?.cornersDotOptions || {})
+          },
+          width: 250,  // Set a base size
+          height: 250,
+        });
+        
+        if (isMounted) {
+          container.innerHTML = '';
+          await qrInstance.append(container);
+        }
+      } catch (err) {
+        console.error("Error generating QR code:", err);
+        if (isMounted) setError(true);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    
+    generateQR();
+    
+    return () => {
+      isMounted = false;
+      container.innerHTML = '';
+    };
+  }, [code.id]);
+  
+  if (loading) {
+    return <div className="flex items-center justify-center h-[120px] w-[120px]"><Spinner size="lg" /></div>;
+  }
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[120px] w-[120px] bg-gray-100 rounded">
+        <p className="text-sm text-gray-500">QR Code Error</p>
+      </div>
+    );
+  }
+  
+  return qrElement ? (
+    <div 
+      className="qr-container h-full w-full" 
+      dangerouslySetInnerHTML={{ __html: qrElement.innerHTML }}
+    />
+  ) : null;
+}
 
 export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: QRCodeListProps) {
-  const [page, setPage] = useState(1);
-  const totalPages = Math.ceil(qrCodes.length / ITEMS_PER_PAGE);
-  const displayedQRCodes = qrCodes.slice(0, page * ITEMS_PER_PAGE);
-  const [categories, setCategories] = useState<Record<string, any>>({});
-  const [scanCounts, setScanCounts] = useState<{ [key: string]: number }>({});
+  const [qrCodesData, setQRCodesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  
   useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const loadCategories = async () => {
-      try {
-        const q = query(
-          collection(db, 'categories'),
-          where('userId', '==', auth.currentUser.uid)
-        );
-        const snapshot = await getDocs(q);
-        const categoriesMap: Record<string, any> = {};
-        snapshot.docs.forEach(doc => {
-          categoriesMap[doc.id] = { id: doc.id, ...doc.data() };
-        });
-        setCategories(categoriesMap);
-      } catch (error) {
-        console.error('Error loading categories:', error);
-      }
-    };
-
-    loadCategories();
+    fetchQRCodes();
   }, []);
-
-  const fetchScanCounts = async () => {
-    setLoading(true);
-    const counts: { [key: string]: number } = {};
-
+  
+  const fetchQRCodes = async () => {
     try {
-      for (const code of qrCodes) {
-        if (!code.id) continue;
-        
-        const scansCol = collection(db, 'qrcodes', code.id, 'scans');
-        const snapshot = await getDocs(scansCol);
-        counts[code.id] = snapshot.docs.length;
-      }
+      setLoading(true);
       
-      setScanCounts(counts);
+      // Get all QR codes for the current user
+      const userQrCodesQuery = query(
+        collection(db, 'qrcodes'),
+        where('userId', '==', auth.currentUser?.uid)
+      );
+      
+      const qrSnapshot = await getDocs(userQrCodesQuery);
+      
+      // Map through each QR code and include its scan count
+      const qrCodesData = qrSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        // If scans field exists use it, otherwise default to 0
+        scans: doc.data().scans || 0
+      }));
+      
+      setQRCodesData(qrCodesData);
     } catch (error) {
-      console.error("Error fetching scan counts:", error);
+      console.error("Error fetching QR codes:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    if (qrCodes.length > 0) {
-      fetchScanCounts();
-    } else {
-      setLoading(false);
-    }
-  }, [qrCodes]);
-
+  
   const handleRefresh = () => {
     setRefreshing(true);
-    onUpdate();
-    fetchScanCounts();
+    fetchQRCodes();
   };
-
-  // Enhance QR codes with category data
-  const qrCodesWithCategories = displayedQRCodes.map(qr => ({
-    ...qr,
-    category: qr.categoryId ? categories[qr.categoryId] : null
-  }));
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm("Are you sure you want to delete this QR code?")) {
-      try {
-        await deleteDoc(doc(db, 'qrcodes', id));
-        onUpdate();
-      } catch (error) {
-        console.error("Error deleting QR code:", error);
-      }
-    }
-  };
-
-  if (qrCodes.length === 0) {
-    return (
-      <div className="text-center py-12 bg-white rounded-lg shadow">
-        <p className="text-gray-600 mb-4">You haven't created any QR codes yet.</p>
-        <a
-          href="/"
-          className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          Create Your First QR Code
-        </a>
-      </div>
-    );
-  }
-
+  
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -130,19 +163,12 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {qrCodesWithCategories.map((code) => (
-          <Card key={code.id} className="p-4 hover:shadow-lg transition-shadow">
+        {qrCodesData.map((code) => (
+          <Card key={code.id} className="p-4 hover:shadow-lg transition-shadow w-[300px]">
             <div className="flex flex-col items-center space-y-4">
-              {/* QR Code Display */}
-              <div className="bg-white p-4 rounded-lg shadow-inner">
-                <QRCode
-                  value={code.redirectUrl || `${window.location.origin}/qr/${code.uniqueId}`}
-                  size={180}
-                  level="H"
-                  includeMargin={true}
-                  className="mx-auto"
-                  renderAs="svg"
-                />
+              {/* QR Code Display Container */}
+              <div className="bg-white rounded-lg shadow-inner w-full aspect-square flex items-center justify-center p-2">
+                <QRCodeDisplay code={code} />
               </div>
 
               {/* QR Code Info */}
@@ -151,13 +177,8 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
                   {code.name || 'Unnamed QR Code'}
                 </h3>
                 <div className="text-sm text-gray-600">
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Spinner size="sm" /> Loading scans...
-                    </span>
-                  ) : (
-                    `Scans: ${scanCounts[code.id] || 0}`
-                  )}
+                  {/* Display the actual scan count from the database */}
+                  Scans: {code.scans || 0}
                 </div>
               </div>
 
@@ -180,7 +201,14 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
                   <ExternalLink className="w-5 h-5" />
                 </a>
                 <button
-                  onClick={() => handleDelete(code.id)}
+                  onClick={() => {/* Handle download logic */}}
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Download QR Code"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => {/* Handle delete logic */}}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   title="Delete QR Code"
                 >
@@ -190,7 +218,7 @@ export default function QRCodeList({ qrCodes, onUpdate, onSelectForAnalytics }: 
 
               {/* Created Date */}
               <div className="text-xs text-gray-400">
-                Created: {code.createdAt?.toDate().toLocaleDateString() || 'Unknown'}
+                Created: {code.createdAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString()}
               </div>
             </div>
           </Card>
