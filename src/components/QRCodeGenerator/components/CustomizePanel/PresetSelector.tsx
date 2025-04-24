@@ -26,6 +26,8 @@ export default function PresetSelector({
         ...prev,
         ...preset.options
       }));
+    } else {
+      console.warn(`Preset type "${type}" not found in presets.`);
     }
   };
 

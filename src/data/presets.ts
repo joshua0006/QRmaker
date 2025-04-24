@@ -19,6 +19,7 @@ export const presets: Preset[] = [
     type: 'rounded',
     options: {
       dotsOptions: {
+        color: '#000000',
         type: 'rounded'
       },
       backgroundOptions: {
@@ -31,6 +32,7 @@ export const presets: Preset[] = [
     type: 'dots',
     options: {
       dotsOptions: {
+        color: '#000000',
         type: 'dots'
       },
       backgroundOptions: {
@@ -43,6 +45,7 @@ export const presets: Preset[] = [
     type: 'elegant',
     options: {
       dotsOptions: {
+        color: '#000000',
         type: 'classy'
       },
       backgroundOptions: {

@@ -1,7 +1,7 @@
 /**
  * QRDisplay component for rendering the QR code with border styling
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface QRDisplayProps {
   qrRef: React.RefObject<HTMLDivElement>;
@@ -18,6 +18,15 @@ export default function QRDisplay({
   borderColor,
   borderRadius
 }: QRDisplayProps) {
+  // Make sure the QR container is always visible and has minimum dimensions
+  useEffect(() => {
+    if (qrRef.current) {
+      // Force a layout recalculation by triggering a reflow
+      qrRef.current.style.display = 'block';
+      qrRef.current.getBoundingClientRect();
+    }
+  }, [qrRef]);
+
   return (
     <div 
       ref={qrRef}
@@ -25,7 +34,11 @@ export default function QRDisplay({
         border: borderWidth ? `${borderWidth}px ${borderStyle} ${borderColor}` : 'none',
         borderRadius: borderRadius ? `${borderRadius}px` : '0',
         padding: borderWidth ? '16px' : '0',
-        backgroundColor: 'white'
+        backgroundColor: 'white',
+        minWidth: '256px',
+        minHeight: '256px',
+        display: 'block',
+        position: 'relative'
       }}
     />
   );

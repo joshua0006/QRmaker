@@ -17,20 +17,36 @@ export function useQRCode(
 
   // Initialize QR code instance
   useEffect(() => {
-    if (!qrCode.current) {
-      qrCode.current = new QRCodeStyling({
+    try {
+      // Always create a fresh instance to avoid state conflicts
+      const qrInstance = new QRCodeStyling({
         ...options,
-        data: url || 'https://', // Static preview of the actual URL
-        image: logoUrl || undefined
+        data: url || 'https://example.com', // Default URL with valid format
+        image: logoUrl || undefined,
       });
+      
+      qrCode.current = qrInstance;
+      
+      console.log('QR code instance created with data:', url || 'https://example.com');
+    } catch (error) {
+      console.error('Failed to initialize QR code:', error);
     }
   }, []);
 
   // Append QR code to container when ref is available
   useEffect(() => {
     if (qrCode.current && qrRef.current) {
-      qrRef.current.innerHTML = '';
-      qrCode.current.append(qrRef.current);
+      try {
+        // Clear previous content
+        qrRef.current.innerHTML = '';
+        
+        // Append QR code to the container
+        qrCode.current.append(qrRef.current);
+        
+        console.log('QR code appended to container');
+      } catch (error) {
+        console.error('Error appending QR code to container:', error);
+      }
     }
   }, [qrRef]);
 
@@ -39,18 +55,27 @@ export function useQRCode(
     if (qrCode.current) {
       const updateQRCode = async () => {
         try {
+          // Update QR code with new options
           qrCode.current?.update({
             ...options,
-            data: url || 'https://', // Static preview of the actual URL
-            image: logoUrl || undefined
+            data: url || 'https://example.com',
+            image: logoUrl || undefined,
           });
+          
+          console.log('QR code updated with data:', url || 'https://example.com');
+          
+          // Force reappend the QR code to solve potential display issues
+          if (qrRef.current) {
+            qrRef.current.innerHTML = '';
+            qrCode.current.append(qrRef.current);
+          }
         } catch (error) {
           console.error('Failed to update QR code:', error);
         }
       };
       updateQRCode();
     }
-  }, [options, url, logoUrl]);
+  }, [options, url, logoUrl, uniqueId]);
 
   // Cleanup on unmount
   useEffect(() => {

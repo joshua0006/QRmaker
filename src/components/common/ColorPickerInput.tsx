@@ -29,6 +29,11 @@ export default function ColorPickerInput({
 
   useClickOutside(popover, () => setIsOpen(false));
 
+  // Prevent clicks inside the color picker from closing it
+  const handlePickerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -40,7 +45,10 @@ export default function ColorPickerInput({
             {presets.map((preset) => (
               <button
                 key={preset.color}
-                onClick={() => onChange(preset.color || '#000000')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange(preset.color || '#000000');
+                }}
                 className="w-6 h-6 rounded-md border border-gray-200 transition-shadow hover:shadow-sm relative group"
                 style={{ backgroundColor: preset.color }}
                 title={preset.label}
@@ -58,7 +66,10 @@ export default function ColorPickerInput({
         <div
           className="w-8 h-8 rounded-md border border-gray-200 cursor-pointer flex items-center justify-center"
           style={{ backgroundColor: safeColor }}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
         >
           <Palette 
             size={14} 
@@ -69,13 +80,23 @@ export default function ColorPickerInput({
         </div>
         
         {isOpen && (
-          <div className="absolute z-10 mt-2" ref={popover}>
-            <div className="p-2 bg-white rounded-md shadow-lg border border-gray-200">
-              <HexColorPicker color={safeColor} onChange={onChange} />
+          <div 
+            className="absolute z-10 mt-2" 
+            ref={popover}
+            onClick={handlePickerClick}
+          >
+            <div 
+              className="p-2 bg-white rounded-md shadow-lg border border-gray-200"
+              onClick={handlePickerClick}
+            >
+              <div onClick={handlePickerClick}>
+                <HexColorPicker color={safeColor} onChange={onChange} />
+              </div>
               <input
                 type="text"
                 value={safeColor}
                 onChange={(e) => onChange(e.target.value)}
+                onClick={handlePickerClick}
                 className="mt-2 w-full px-2 py-1 text-xs border border-gray-200 rounded-sm"
               />
             </div>
@@ -86,6 +107,7 @@ export default function ColorPickerInput({
           type="text"
           value={safeColor}
           onChange={(e) => onChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
           className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
         />
       </div>
